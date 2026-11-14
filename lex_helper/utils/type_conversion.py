@@ -48,9 +48,12 @@ def safe_int(value: Any, default: int | None = None) -> int | None:
         if isinstance(value, int | float):
             return int(value)
         if isinstance(value, str):
-            return int(float(value))
+            try:
+                return int(value)
+            except ValueError:
+                return int(float(value))
         return default
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, OverflowError):
         return default
 
 
@@ -78,7 +81,7 @@ def safe_float(value: Any, default: float | None = None) -> float | None:
         if isinstance(value, str):
             return float(value)
         return default
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, OverflowError):
         return default
 
 

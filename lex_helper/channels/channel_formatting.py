@@ -9,6 +9,7 @@ from lex_helper.channels.base import Channel
 from lex_helper.channels.lex import LexChannel
 from lex_helper.channels.sms import SMSChannel
 from lex_helper.core.types import (
+    LexCustomPayload,
     LexImageResponseCard,
     LexPlainText,
     LexResponse,
@@ -25,6 +26,7 @@ def format_for_channel[T: SessionAttributes](response: LexResponse[T], channel_s
         PlainText: _format_plain_text,
         LexPlainText: _format_plain_text,
         LexImageResponseCard: _format_image_card,
+        LexCustomPayload: _format_custom_payload,
     }
 
     channel = _get_channel(channel_string)
@@ -97,4 +99,15 @@ def _format_image_card(
     options_provided: list[str],
     formatted_messages: list[Any],
 ) -> list[Any]:
+    if isinstance(channel, SMSChannel):
+        return add_to_list(lst=formatted_messages, item=channel.format_image_card(message))
     return add_to_list(lst=formatted_messages, item=message)
+
+
+def _format_custom_payload(
+    message: LexCustomPayload,
+    channel: Channel,
+    options_provided: list[str],
+    formatted_messages: list[Any],
+) -> list[Any]:
+    return add_to_list(lst=formatted_messages, item=channel.format_custom_payload(message))

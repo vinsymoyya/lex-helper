@@ -129,7 +129,8 @@ def close[T: SessionAttributes](lex_request: LexRequest[T], messages: LexMessage
     """
     intent, active_contexts, session_attributes, _ = get_request_components(lex_request)
 
-    lex_request.sessionState.activeContexts = remove_inactive_context(lex_request)
+    active_contexts = remove_inactive_context(lex_request)
+    lex_request.sessionState.activeContexts = active_contexts
     lex_request.sessionState.intent.state = "Fulfilled"
     session_attributes.previous_dialog_action_type = "Close"
     response = LexResponse(
@@ -205,13 +206,13 @@ def elicit_slot[T: SessionAttributes](
     session_attributes.options_provided = get_provided_options(messages)
     session_attributes.previous_intent = intent.name
     session_attributes.previous_message = json.dumps(messages, cls=PydanticEncoder)
-    # session_attributes.previous_dialog_action_type = "ElicitSlot"
+    session_attributes.previous_dialog_action_type = "ElicitSlot"
     slot_name = slot_to_elicit
 
     if not isinstance(slot_to_elicit, str):
         slot_name = slot_to_elicit.value
 
-    session_attributes.previous_slot_to_elicit = (intent.name.replace("_", "") + "Slot") + "." + str(slot_name).upper()
+    session_attributes.previous_slot_to_elicit = str(slot_name)
 
     if "." in str(slot_name):
         raise Exception("SLOT PARSED INCORRECTLY")
@@ -424,8 +425,12 @@ def set_subslot(
     """
 
     # Ensure the composite slot and its subSlots dictionary exist
-    if composite_slot_name.value not in intent.slots:
-        intent.slots[composite_slot_name.value] = {"subSlots": {}}
+    slot = intent.slots.get(composite_slot_name.value)
+    if slot is None:
+        slot = {}
+        intent.slots[composite_slot_name.value] = slot
+    if slot.get("subSlots") is None:
+        slot["subSlots"] = {}
 
     # Determine the value to set for the subslot
     if subslot_value is None:
@@ -843,6 +848,8 @@ def parse_lex_request[T: SessionAttributes](
     """
     # Create a copy of the data to modify
     data_copy = data.copy()
+    if "sessionState" in data_copy:
+        data_copy["sessionState"] = data_copy["sessionState"].copy()
 
     # If there are session attributes in the event, convert them to the proper model
     if data_copy.get("sessionState", {}).get("sessionAttributes"):
